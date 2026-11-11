@@ -5,119 +5,133 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>English Shift Player</title>
 <meta name="description" content="Плеер для shadowing: YouTube по фразам, петля, замедление, запись голоса и сверка произношения.">
-<meta name="theme-color" content="#1D5E86">
+<meta name="theme-color" content="#2c3723">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Shadowing">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Manrope:wght@500;600&display=swap">
 <style>
-/* Layout: phone = sticky dock (video + current phrase + controls) over a scrolling phrase list; desktop = two columns. */
+/* FLUENT look, same tokens as English Shift. Phone: sticky dock over a scrolling phrase list. Desktop: two columns. */
 :root{
-  --bg:#F3F5F2; --surface:#FFFFFF; --sunk:#E9EDE9; --ink:#14201D; --muted:#5A6965; --line:#D5DDD9;
-  --accent:#1D5E86; --accent-ink:#FFFFFF; --accent-soft:#DCEAF3;
-  --marker:#F6DE6E; --marker-ink:#3A3000;
-  --good:#2C7A4B; --good-soft:#DDF0E3; --warn:#9A6512; --warn-soft:#F7EBD3; --bad:#B0372D; --bad-soft:#F6DEDB;
+  --bg:#eef0e6; --side:#e4e8d7; --line:#d3d8c3; --tline:#d6dbc6; --surface:rgba(255,255,255,.7); --solid:#fbfcf8;
+  --ink:#24271f; --muted:#6e745f; --muted2:#7c836b; --faint:#999e90; --g-line:#a9b28f;
+  --btn:#252a21; --btn-h:#384030; --btn-ink:#f1f2e8; --act:#252720; --act-ink:#e5e7d8;
+  --accent:#e99a65; --accent-soft:#f6e2d2; --accent-ink:#8a4f28;
+  --hero:#dedfce; --hero-line:#cdd2b8; --hero-track:#bdc2ac; --hero-fill:#687452;
+  --g-soft:#dfe6cc; --g-ink:#4f6239; --t-soft:#efe3d3; --t-ink:#8a6440;
+  --sand:#f3eadc; --sand-line:#e0cfb6; --sand-ink:#4a3826;
+  --bad:#a2493a; --bad-soft:#f3e0d9; --bad-ink:#ffffff; --good-ink:#ffffff; --good:#4f6239;
+  --f-head:"Manrope","Golos Text",system-ui,sans-serif;
   --f-body:"Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-  --r:10px;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){:root{
-  --bg:#0E1415; --surface:#162022; --sunk:#111A1B; --ink:#E4ECE9; --muted:#93A4A0; --line:#28363A;
-  --accent:#70B4E0; --accent-ink:#06202F; --accent-soft:#183243;
-  --marker:#6B5A12; --marker-ink:#FFF3B8;
-  --good:#5EC48B; --good-soft:#163024; --warn:#E2AC52; --warn-soft:#33270F; --bad:#EC7A6F; --bad-soft:#3A1C19;
+  --bg:#171a13; --side:#1d2118; --line:#2e3427; --tline:#343b2c; --surface:rgba(255,255,255,.035); --solid:#1f231a;
+  --ink:#e8ebdd; --muted:#a3aa95; --muted2:#8f9682; --faint:#767d6b; --g-line:#5d6a49;
+  --btn:#dfe6cc; --btn-h:#eef1e3; --btn-ink:#1c2117; --act:#3a4730; --act-ink:#eef1e3;
+  --accent-soft:#3b2a1d; --accent-ink:#f0b48a;
+  --hero:#22281b; --hero-line:#333c28; --hero-track:#39422e; --hero-fill:#aebc8b;
+  --g-soft:#2a3320; --g-ink:#b7c793; --t-soft:#35291e; --t-ink:#d9b48d;
+  --sand:#2b251c; --sand-line:#463a2a; --sand-ink:#f0dfc6;
+  --bad:#e0907f; --bad-soft:#3a221d; --bad-ink:#2a1410; --good:#aebc8b; --good-ink:#1c2117;
   color-scheme:dark}}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;
   padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 [hidden]{display:none!important}
-a{color:var(--accent)}
+a{color:var(--g-ink)}
 button,input{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;scroll-behavior:auto!important}}
-.wrap{max-width:1180px;margin:0 auto;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));padding-bottom:40px}
-.bar{display:flex;align-items:center;gap:12px;padding:10px 0;min-width:0}
-.back{text-decoration:none;font-weight:500;white-space:nowrap}
-.ttl{min-width:0;flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.ic{width:18px;height:18px;flex:none;display:inline-block;vertical-align:middle}
+.wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-bottom:40px}
+.bar{display:flex;align-items:center;gap:14px;min-height:64px;border-bottom:1px solid var(--line);margin-bottom:16px;min-width:0}
+.logo{font-family:var(--f-head);font-weight:600;font-size:19px;letter-spacing:-.06em;color:var(--ink);text-decoration:none;white-space:nowrap;display:inline-flex;align-items:center;gap:8px}
+.logo b{color:var(--accent);font-weight:inherit}
+.logo .ic{width:16px;height:16px;color:var(--muted)}
+.ttl{min-width:0;flex:1;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
+.mono{font-family:var(--f-head);font-variant-numeric:tabular-nums;font-weight:500}
 .muted{color:var(--muted)}
 .small{font-size:13px}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .sp{flex:1}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:8px 14px;border-radius:9px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:500;text-decoration:none;color:var(--ink);touch-action:manipulation}
-.btn:hover{border-color:var(--accent)}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.btn.rec{border-color:var(--bad);color:var(--bad)}
-.btn.rec.on{background:var(--bad);color:#fff}
-.btn.listen.on{background:var(--good);border-color:var(--good);color:#fff}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:9px 16px;border-radius:8px;border:1px solid var(--hero-line);background:transparent;cursor:pointer;font-weight:500;font-size:14px;text-decoration:none;color:var(--ink);touch-action:manipulation;transition:background .15s,border-color .15s}
+.btn:hover{background:var(--surface);border-color:var(--g-line)}
+.btn.primary{background:var(--btn);border-color:var(--btn);color:var(--btn-ink)}
+.btn.primary:hover{background:var(--btn-h);border-color:var(--btn-h)}
+.btn.rec{color:var(--bad);border-color:var(--bad-soft)}
+.btn.rec.on{background:var(--bad);border-color:var(--bad);color:var(--bad-ink)}
+.btn.listen.on{background:var(--good);border-color:var(--good);color:var(--good-ink)}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .btn svg{width:18px;height:18px}
-.btn.icon{width:48px;padding:0}
-.btn.big{min-height:52px;font-size:16px;padding:10px 20px}
-.chip{min-height:36px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:14px;touch-action:manipulation}
-.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.mini{min-height:34px;min-width:34px;padding:2px 8px;border-radius:7px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-family:var(--f-mono);font-size:13px;touch-action:manipulation}
+.btn.icon{width:52px;padding:0}
+.btn.big{min-height:52px;font-size:15px;padding:12px 22px}
+.chip{min-height:36px;padding:5px 14px;border-radius:999px;border:1px solid var(--tline);background:var(--surface);color:var(--muted);cursor:pointer;font-size:14px;touch-action:manipulation;transition:background .15s,color .15s,border-color .15s}
+.chip:hover{color:var(--ink);border-color:var(--g-line)}
+.chip[aria-pressed="true"]{background:var(--act);border-color:var(--act);color:var(--act-ink)}
+.mini{min-height:34px;min-width:36px;padding:2px 8px;border-radius:8px;border:1px solid var(--tline);background:var(--solid);cursor:pointer;font-family:var(--f-head);font-weight:500;font-size:13px;touch-action:manipulation}
+.mini:hover{border-color:var(--g-line)}
 .group{display:inline-flex;align-items:center;gap:4px}
-.group .lbl{font-size:12px;color:var(--muted);margin-right:2px}
-.note{border-radius:9px;padding:10px 12px;background:var(--sunk);font-size:14px}
-.note.good{background:var(--good-soft);color:var(--good)}
-.note.warn{background:var(--warn-soft);color:var(--warn)}
+.group .lbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-right:4px}
+.note{border-radius:12px;padding:12px 14px;background:var(--side);font-size:14px}
+.note.good{background:var(--g-soft);color:var(--g-ink)}
+.note.warn{background:var(--t-soft);color:var(--t-ink)}
 .note.bad{background:var(--bad-soft);color:var(--bad)}
-.note.turn{background:var(--marker);color:var(--marker-ink);font-weight:600;font-size:16px;text-align:center}
+.note.turn{background:var(--sand);border:1px solid var(--sand-line);color:var(--sand-ink);font-family:var(--f-head);font-weight:600;font-size:16px;text-align:center}
 
-.layout{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
-.dock{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-bottom:8px;display:flex;flex-direction:column;gap:10px}
-.vid{position:relative;width:100%;aspect-ratio:16/9;max-width:100%;background:#000;border-radius:10px;overflow:hidden}
+.layout{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
+.dock{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-bottom:8px;display:flex;flex-direction:column;gap:12px}
+.vid{position:relative;width:100%;aspect-ratio:16/9;max-width:100%;background:#000;border-radius:16px;overflow:hidden;border:1px solid var(--hero-line)}
 .vid iframe,.vid #yt{position:absolute;inset:0;width:100%;height:100%;border:0}
 .vidmsg{position:absolute;inset:0;display:grid;place-items:center;color:#fff;text-align:center;padding:16px;font-size:14px}
-.modes{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--sunk);padding:4px;border-radius:10px}
-.modes button{min-height:38px;border:0;border-radius:7px;background:transparent;cursor:pointer;font-weight:500;color:var(--muted)}
-.modes button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
-.cur{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:8px}
-.curmeta{display:flex;gap:10px;font-size:12px;color:var(--muted)}
-.curtext{font-size:18px;line-height:1.45;font-weight:500;overflow-wrap:anywhere}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--side);border:1px solid var(--line);padding:4px;border-radius:12px}
+.modes button{min-height:40px;border:0;border-radius:8px;background:transparent;cursor:pointer;font-weight:500;font-size:14px;color:var(--muted)}
+.modes button[aria-selected="true"]{background:var(--act);color:var(--act-ink)}
+.cur{background:var(--hero);border:1px solid var(--hero-line);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.curmeta{display:flex;gap:12px;font-size:12px;color:var(--muted)}
+.curtext{font-family:var(--f-head);font-size:20px;line-height:1.4;font-weight:600;letter-spacing:-.01em;overflow-wrap:anywhere}
 .passes{display:flex;gap:5px;align-items:center}
-.passes i{width:22px;height:8px;border-radius:4px;background:var(--sunk);border:1px solid var(--line)}
-.passes i.on{background:var(--accent);border-color:var(--accent)}
-.passes span{font-size:12px;color:var(--muted);margin-left:4px}
-.ctrl{display:grid;grid-template-columns:48px minmax(0,1fr) 48px;gap:8px}
-.panel{display:flex;flex-direction:column;gap:10px}
-.prog{height:8px;background:var(--sunk);border-radius:4px;overflow:hidden}
-.prog i{display:block;height:100%;width:0;background:var(--accent)}
-.diff{line-height:1.9;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
-.diff .ok{color:var(--good)}
+.passes i{width:22px;height:6px;border-radius:999px;background:var(--hero-track)}
+.passes i.on{background:var(--hero-fill)}
+.passes span{font-size:12px;color:var(--muted);margin-left:6px}
+.ctrl{display:grid;grid-template-columns:52px minmax(0,1fr) 52px;gap:8px}
+.panel{display:flex;flex-direction:column;gap:12px}
+.prog{height:4px;background:var(--hero-track);border-radius:999px;overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--hero-fill);border-radius:999px}
+.diff{line-height:1.9;background:var(--solid);border:1px solid var(--tline);border-radius:12px;padding:12px 14px}
+.diff .ok{color:var(--g-ink)}
 .diff .miss{color:var(--bad);text-decoration:underline dotted}
 .diff .heard{display:block;font-size:13px;color:var(--muted);margin-top:4px}
-.pct{display:inline-block;font-size:12px;font-weight:600;border-radius:4px;padding:0 6px;margin-left:6px}
-.pct.g{background:var(--good-soft);color:var(--good)} .pct.w{background:var(--warn-soft);color:var(--warn)} .pct.b{background:var(--bad-soft);color:var(--bad)}
+.pct{display:inline-block;font-size:11px;font-weight:600;border-radius:999px;padding:1px 8px;margin-left:8px}
+.pct.g{background:var(--g-soft);color:var(--g-ink)} .pct.w{background:var(--t-soft);color:var(--t-ink)} .pct.b{background:var(--bad-soft);color:var(--bad)}
 audio{width:100%;height:40px}
-.list{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
-.list li{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:8px;padding:10px 12px;border-top:1px solid var(--line);cursor:pointer;align-items:start}
-.list li:first-child{border-top:0}
-.list li:hover{background:var(--sunk)}
-.list li.sel{background:var(--accent-soft)}
-.list li.play .tx{color:var(--accent)}
-.list .ts{font-family:var(--f-mono);font-size:12px;color:var(--accent);padding-top:3px}
-.list .pc{font-family:var(--f-mono);font-size:12px;color:var(--muted);padding-top:3px}
-.list .pc.done{color:var(--good)}
-.home{display:flex;flex-direction:column;gap:14px;max-width:640px;margin:24px auto}
-.home h1{font-size:24px;margin:0}
+.list{list-style:none;margin:0;padding:6px;background:var(--surface);border:1px solid var(--tline);border-radius:16px}
+.list li{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:8px;padding:10px;border-radius:10px;cursor:pointer;align-items:start}
+.list li:hover{background:var(--side)}
+.list li.sel{background:var(--g-soft)}
+.list li.play .tx{color:var(--g-ink);font-weight:500}
+.list .ts{font-family:var(--f-head);font-weight:500;font-size:12px;color:var(--g-ink);padding-top:3px;font-variant-numeric:tabular-nums}
+.list .pc{font-family:var(--f-head);font-size:12px;color:var(--muted);padding-top:3px}
+.list .pc.done{color:var(--accent-ink)}
+.home{display:flex;flex-direction:column;gap:14px;max-width:640px;margin:28px auto}
+.home h1{font-family:var(--f-head);font-weight:500;font-size:32px;letter-spacing:-.025em;line-height:1.15;margin:0}
+.home .eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
 .home form{display:flex;gap:8px;flex-wrap:wrap}
-.home input{flex:1;min-width:200px;min-height:44px;border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:8px 12px;font-size:16px}
-.recent{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
-.recent a{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-top:1px solid var(--line);text-decoration:none;color:var(--ink)}
-.recent a:first-child{border-top:0}
-.kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.home input{flex:1;min-width:200px;min-height:44px;border:1px solid var(--tline);border-radius:10px;background:var(--solid);padding:8px 12px;font-size:16px}
+.home input:focus{outline:none;border-color:var(--g-line);box-shadow:0 0 0 3px var(--g-soft)}
+.recent{display:flex;flex-direction:column;gap:8px}
+.recent a{display:flex;flex-direction:column;gap:2px;padding:14px 16px;border-radius:12px;border:1px solid var(--tline);background:var(--surface);text-decoration:none;color:var(--ink)}
+.recent a b{font-weight:500}
+.kbd{font-family:var(--f-head);font-size:12px;border:1px solid var(--tline);border-radius:6px;padding:0 5px;background:var(--solid)}
 .hidedesk{display:inline}
 @media (min-width:980px){
   .layout{grid-template-columns:minmax(0,1.35fr) minmax(320px,1fr);align-items:start}
   .dock{position:static}
-  .listcol{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;border-radius:var(--r)}
+  .listcol{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;border-radius:16px}
   .hidedesk{display:none}
 }
 @media (max-width:979px){ .keys{display:none} }
@@ -127,15 +141,15 @@ audio{width:100%;height:40px}
 <body>
 <div class="wrap">
   <header class="bar">
-    <a class="back" id="backLink" href="https://claude.ai/artifact/LrvrWZT5itPVSdXDP8Qhau">← English Shift</a>
+    <a class="logo" id="backLink" href="https://claude.ai/artifact/LrvrWZT5itPVSdXDP8Qhau" aria-label="Назад в English Shift"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 5L9 12L15 19"/></svg><span>English Shift<b>.</b></span></a>
     <div class="ttl" id="ttl"></div>
   </header>
 
   <section id="home" class="home" hidden>
-    <h1>Плеер для shadowing</h1>
+    <span class="eyebrow">Слушай и повторяй</span><h1>Плеер для shadowing</h1>
     <p class="muted">Обычно плеер открывается из English Shift: тогда у видео есть текст по фразам. Можно вставить ссылку и сделать петлю вручную.</p>
     <form id="homeForm"><input id="homeUrl" type="text" inputmode="url" placeholder="Ссылка на YouTube" autocomplete="off"><button class="btn primary">Открыть</button></form>
-    <div id="recentWrap" hidden><h2 class="small muted" style="margin:8px 0 6px;text-transform:uppercase;letter-spacing:.06em">Недавние куски</h2><nav class="recent" id="recent"></nav></div>
+    <div id="recentWrap" hidden><h2 class="small" style="margin:8px 0 8px;text-transform:uppercase;letter-spacing:.1em;font-weight:400;color:var(--faint)">Недавние куски</h2><nav class="recent" id="recent"></nav></div>
   </section>
 
   <section id="view" class="layout" hidden>
@@ -153,9 +167,9 @@ audio{width:100%;height:40px}
             <div class="passes" id="passes" aria-label="Проходы"></div>
           </div>
           <div class="ctrl">
-            <button class="btn icon" id="bPrev" aria-label="Предыдущая фраза"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+            <button class="btn icon" id="bPrev" aria-label="Предыдущая фраза"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 5L9 12L15 19"/></svg></button>
             <button class="btn primary" id="bPlay"><span id="bPlayIco"></span><span id="bPlayTxt">Играть фразу</span></button>
-            <button class="btn icon" id="bNext" aria-label="Следующая фраза"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
+            <button class="btn icon" id="bNext" aria-label="Следующая фраза"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5L15 12L9 19"/></svg></button>
           </div>
           <div class="note turn" id="turn" hidden>Твоя очередь, повтори вслух · <span id="turnSec" class="mono"></span></div>
         </div>
@@ -188,9 +202,9 @@ audio{width:100%;height:40px}
         </div>
         <div class="note warn" id="limit" hidden>Шесть проходов. Дальше пользы мало, бери следующую фразу. <div class="row" style="margin-top:8px"><button class="btn" id="bLimitNext">Следующая фраза</button><button class="btn" id="bLimitMore">Ещё раз</button></div></div>
         <div class="row">
-          <button class="btn rec" id="bRec"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg><span id="bRecTxt">Записать себя</span></button>
+          <button class="btn rec" id="bRec"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"><path d="M18.5002 11.9999C18.5002 13.3807 17.381 14.4999 16.0002 14.4999C14.6195 14.4999 13.5002 13.3807 13.5002 11.9999C13.5002 10.6192 14.6195 9.49994 16.0002 9.49994C17.381 9.49994 18.5002 10.6192 18.5002 11.9999Z"/><path d="M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12Z"/><path d="M10.5 12C10.5 13.3807 9.38071 14.5 8 14.5C6.61929 14.5 5.5 13.3807 5.5 12C5.5 10.6193 6.61929 9.5 8 9.5C9.38071 9.5 10.5 10.6193 10.5 12Z"/><path d="M8 14.5H16"/></g></svg><span id="bRecTxt">Записать себя</span></button>
           <button class="btn" id="bCompare" disabled>Сравнить</button>
-          <button class="btn listen" id="bCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span id="bCheckTxt">Проверить</span></button>
+          <button class="btn listen" id="bCheck"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"><path d="M12 16C9.23858 16 7 13.7614 7 11V8C7 5.23858 9.23858 3 12 3C14.7614 3 17 5.23858 17 8V11C17 13.7614 14.7614 16 12 16Z"/><path d="M13 8L17 8"/><path d="M13 11L17 11"/><path d="M20 10V11C20 15.4183 16.4183 19 12 19C7.58172 19 4 15.4183 4 11V10"/><path d="M12 19V22"/></g></svg><span id="bCheckTxt">Проверить</span></button>
         </div>
         <audio id="recAudio" controls hidden></audio>
         <div class="diff" id="diff" hidden></div>
@@ -311,7 +325,7 @@ function renderMode() {
   renderList(); renderCur(); renderPlay();
 }
 function renderPlay() {
-  $("#bPlayIco").innerHTML = st.playing ? '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>' : '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+  $("#bPlayIco").innerHTML = st.playing ? "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-width=\"1.5\"><path d=\"M6 22C4.11438 22 3.17157 22 2.58579 21.4142C2 20.8284 2 19.8856 2 18V6C2 4.11438 2 3.17157 2.58579 2.58579C3.17157 2 4.11438 2 6 2C7.88562 2 8.82843 2 9.41421 2.58579C10 3.17157 10 4.11438 10 6V18C10 19.8856 10 20.8284 9.41421 21.4142C8.82843 22 7.88562 22 6 22Z\"/><path d=\"M18 22C16.1144 22 15.1716 22 14.5858 21.4142C14 20.8284 14 19.8856 14 18V6C14 4.11438 14 3.17157 14.5858 2.58579C15.1716 2 16.1144 2 18 2C19.8856 2 20.8284 2 21.4142 2.58579C22 3.17157 22 4.11438 22 6V18C22 19.8856 22 20.8284 21.4142 21.4142C20.8284 22 19.8856 22 18 22Z\"/></g></svg>" : "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-width=\"1.5\" d=\"M3 5.0329L3 18.9671C3 21.2763 5.53435 22.736 7.59662 21.6145L20.4086 14.6474C22.5305 13.4935 22.5305 10.5065 20.4086 9.35258L7.59661 2.38548C5.53435 1.26402 3 2.72368 3 5.0329Z\"/></svg>";
   $("#bPlayTxt").textContent = st.playing ? "Пауза" : "Играть фразу";
   $("#bPlayIn").textContent = st.playing ? "Пауза" : "Смотреть кусок";
 }
