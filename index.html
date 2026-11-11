@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>English Shift Player</title>
+<title>English Lions Player</title>
 <meta name="description" content="Плеер для shadowing: YouTube по фразам, петля, замедление, запись голоса и сверка произношения.">
 <meta name="theme-color" content="#2c3723">
 <link rel="manifest" href="manifest.webmanifest">
@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Manrope:wght@500;600&display=swap">
 <style>
-/* FLUENT look, same tokens as English Shift. Phone: sticky dock over a scrolling phrase list. Desktop: two columns. */
+/* FLUENT look, same tokens as English Lions. Phone: sticky dock over a scrolling phrase list. Desktop: two columns. */
 :root{
   --bg:#eef0e6; --side:#e4e8d7; --line:#d3d8c3; --tline:#d6dbc6; --surface:rgba(255,255,255,.7); --solid:#fbfcf8;
   --ink:#24271f; --muted:#6e745f; --muted2:#7c836b; --faint:#999e90; --g-line:#a9b28f;
@@ -131,13 +131,13 @@ audio{width:100%;height:40px}
 <body>
 <div class="wrap">
   <header class="bar">
-    <a class="logo" id="backLink" href="https://claude.ai/artifact/LrvrWZT5itPVSdXDP8Qhau" aria-label="Назад в English Shift"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 5L9 12L15 19"/></svg><span>English Shift<b>.</b></span></a>
+    <a class="logo" id="backLink" href="https://claude.ai/artifact/LrvrWZT5itPVSdXDP8Qhau" aria-label="Назад в English Lions"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 5L9 12L15 19"/></svg><span>English Lions<b>.</b></span></a>
     <div class="ttl" id="ttl"></div>
   </header>
 
   <section id="home" class="home" hidden>
     <span class="eyebrow">Слушай и повторяй</span><h1>Плеер для shadowing</h1>
-    <p class="muted">Обычно плеер открывается из English Shift: тогда у видео есть текст по фразам. Можно вставить ссылку и сделать петлю вручную.</p>
+    <p class="muted">Обычно плеер открывается из English Lions: тогда у видео есть текст по фразам. Можно вставить ссылку и сделать петлю вручную.</p>
     <form id="homeForm"><input id="homeUrl" type="text" inputmode="url" placeholder="Ссылка на YouTube" autocomplete="off"><button class="btn primary">Открыть</button></form>
     <div id="recentWrap" hidden><h2 class="small" style="margin:8px 0 8px;text-transform:uppercase;letter-spacing:.1em;font-weight:400;color:var(--faint)">Недавние куски</h2><nav class="recent" id="recent"></nav></div>
   </section>
@@ -169,7 +169,7 @@ audio{width:100%;height:40px}
         <div class="prog" aria-hidden="true"><i id="progBar"></i></div>
         <div class="row small muted"><span id="progTxt" class="mono"></span><span class="sp"></span><button class="chip" id="bText" aria-pressed="false">Показать текст</button></div>
         <div class="row"><button class="btn primary big" id="bPlayIn">Смотреть кусок</button><button class="btn" id="bRestart">С начала</button></div>
-        <div class="note good" id="inEnd" hidden>Кусок закончился. Вернись в English Shift и сохрани из него фразы, потом переходи к shadowing. <div class="row" style="margin-top:8px"><button class="btn" id="bToShadow">К shadowing</button></div></div>
+        <div class="note good" id="inEnd" hidden>Кусок закончился. Вернись в English Lions и сохрани из него фразы, потом переходи к shadowing. <div class="row" style="margin-top:8px"><button class="btn" id="bToShadow">К shadowing</button></div></div>
         <p class="small muted" style="margin:0">Первый раз смотри без текста и следи за смыслом. Слова не переводи.</p>
       </div>
 
@@ -504,7 +504,7 @@ function renderHome() {
 function boot() {
   const P = parseHash();
   cancelTurn(); st.compare = false;
-  if (!P) { st.P = null; $("#view").hidden = true; $("#home").hidden = false; $("#ttl").textContent = ""; document.title = "English Shift Player"; renderHome(); if (ready) safe(() => YTP.pauseVideo()); return; }
+  if (!P) { st.P = null; $("#view").hidden = true; $("#home").hidden = false; $("#ttl").textContent = ""; document.title = "English Lions Player"; renderHome(); if (ready) safe(() => YTP.pauseVideo()); return; }
   const same = st.P && st.P.v === P.v;
   st.P = P; st.manual = !P.x.length; st.mode = P.m; st.passes = LS.get("esp.passes." + P.v, {}); st.showText = false; st.hl = -1;
   if (st.manual) { st.A = P.s; st.B = P.e > P.s ? P.e : P.s + 6; } else { st.i = P.i; st.j = P.i; st.nA = st.nB = 0; st.A = X()[st.i][0]; st.B = endOf(st.j); }
