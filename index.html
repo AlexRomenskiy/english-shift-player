@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>English Shift Player</title>
+<meta name="description" content="Плеер для shadowing: YouTube по фразам, петля, замедление, запись голоса и сверка произношения.">
+<meta name="theme-color" content="#1D5E86">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Shadowing">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: phone = sticky dock (video + current phrase + controls) over a scrolling phrase list; desktop = two columns. */
+:root{
+  --bg:#F3F5F2; --surface:#FFFFFF; --sunk:#E9EDE9; --ink:#14201D; --muted:#5A6965; --line:#D5DDD9;
+  --accent:#1D5E86; --accent-ink:#FFFFFF; --accent-soft:#DCEAF3;
+  --marker:#F6DE6E; --marker-ink:#3A3000;
+  --good:#2C7A4B; --good-soft:#DDF0E3; --warn:#9A6512; --warn-soft:#F7EBD3; --bad:#B0372D; --bad-soft:#F6DEDB;
+  --f-body:"Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --r:10px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0E1415; --surface:#162022; --sunk:#111A1B; --ink:#E4ECE9; --muted:#93A4A0; --line:#28363A;
+  --accent:#70B4E0; --accent-ink:#06202F; --accent-soft:#183243;
+  --marker:#6B5A12; --marker-ink:#FFF3B8;
+  --good:#5EC48B; --good-soft:#163024; --warn:#E2AC52; --warn-soft:#33270F; --bad:#EC7A6F; --bad-soft:#3A1C19;
+  color-scheme:dark}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+a{color:var(--accent)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;scroll-behavior:auto!important}}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));padding-bottom:40px}
+.bar{display:flex;align-items:center;gap:12px;padding:10px 0;min-width:0}
+.back{text-decoration:none;font-weight:500;white-space:nowrap}
+.ttl{min-width:0;flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sp{flex:1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:8px 14px;border-radius:9px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:500;text-decoration:none;color:var(--ink);touch-action:manipulation}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.rec{border-color:var(--bad);color:var(--bad)}
+.btn.rec.on{background:var(--bad);color:#fff}
+.btn.listen.on{background:var(--good);border-color:var(--good);color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn svg{width:18px;height:18px}
+.btn.icon{width:48px;padding:0}
+.btn.big{min-height:52px;font-size:16px;padding:10px 20px}
+.chip{min-height:36px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:14px;touch-action:manipulation}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.mini{min-height:34px;min-width:34px;padding:2px 8px;border-radius:7px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-family:var(--f-mono);font-size:13px;touch-action:manipulation}
+.group{display:inline-flex;align-items:center;gap:4px}
+.group .lbl{font-size:12px;color:var(--muted);margin-right:2px}
+.note{border-radius:9px;padding:10px 12px;background:var(--sunk);font-size:14px}
+.note.good{background:var(--good-soft);color:var(--good)}
+.note.warn{background:var(--warn-soft);color:var(--warn)}
+.note.bad{background:var(--bad-soft);color:var(--bad)}
+.note.turn{background:var(--marker);color:var(--marker-ink);font-weight:600;font-size:16px;text-align:center}
+
+.layout{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.dock{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-bottom:8px;display:flex;flex-direction:column;gap:10px}
+.vid{position:relative;width:100%;aspect-ratio:16/9;max-width:100%;background:#000;border-radius:10px;overflow:hidden}
+.vid iframe,.vid #yt{position:absolute;inset:0;width:100%;height:100%;border:0}
+.vidmsg{position:absolute;inset:0;display:grid;place-items:center;color:#fff;text-align:center;padding:16px;font-size:14px}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--sunk);padding:4px;border-radius:10px}
+.modes button{min-height:38px;border:0;border-radius:7px;background:transparent;cursor:pointer;font-weight:500;color:var(--muted)}
+.modes button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.cur{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.curmeta{display:flex;gap:10px;font-size:12px;color:var(--muted)}
+.curtext{font-size:18px;line-height:1.45;font-weight:500;overflow-wrap:anywhere}
+.passes{display:flex;gap:5px;align-items:center}
+.passes i{width:22px;height:8px;border-radius:4px;background:var(--sunk);border:1px solid var(--line)}
+.passes i.on{background:var(--accent);border-color:var(--accent)}
+.passes span{font-size:12px;color:var(--muted);margin-left:4px}
+.ctrl{display:grid;grid-template-columns:48px minmax(0,1fr) 48px;gap:8px}
+.panel{display:flex;flex-direction:column;gap:10px}
+.prog{height:8px;background:var(--sunk);border-radius:4px;overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--accent)}
+.diff{line-height:1.9;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+.diff .ok{color:var(--good)}
+.diff .miss{color:var(--bad);text-decoration:underline dotted}
+.diff .heard{display:block;font-size:13px;color:var(--muted);margin-top:4px}
+.pct{display:inline-block;font-size:12px;font-weight:600;border-radius:4px;padding:0 6px;margin-left:6px}
+.pct.g{background:var(--good-soft);color:var(--good)} .pct.w{background:var(--warn-soft);color:var(--warn)} .pct.b{background:var(--bad-soft);color:var(--bad)}
+audio{width:100%;height:40px}
+.list{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.list li{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:8px;padding:10px 12px;border-top:1px solid var(--line);cursor:pointer;align-items:start}
+.list li:first-child{border-top:0}
+.list li:hover{background:var(--sunk)}
+.list li.sel{background:var(--accent-soft)}
+.list li.play .tx{color:var(--accent)}
+.list .ts{font-family:var(--f-mono);font-size:12px;color:var(--accent);padding-top:3px}
+.list .pc{font-family:var(--f-mono);font-size:12px;color:var(--muted);padding-top:3px}
+.list .pc.done{color:var(--good)}
+.home{display:flex;flex-direction:column;gap:14px;max-width:640px;margin:24px auto}
+.home h1{font-size:24px;margin:0}
+.home form{display:flex;gap:8px;flex-wrap:wrap}
+.home input{flex:1;min-width:200px;min-height:44px;border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:8px 12px;font-size:16px}
+.recent{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.recent a{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-top:1px solid var(--line);text-decoration:none;color:var(--ink)}
+.recent a:first-child{border-top:0}
+.kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.hidedesk{display:inline}
+@media (min-width:980px){
+  .layout{grid-template-columns:minmax(0,1.35fr) minmax(320px,1fr);align-items:start}
+  .dock{position:static}
+  .listcol{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;border-radius:var(--r)}
+  .hidedesk{display:none}
+}
+@media (max-width:979px){ .keys{display:none} }
+@media (max-height:600px){ .dock{position:static} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="bar">
+    <a class="back" id="backLink" href="https://claude.ai/artifact/LrvrWZT5itPVSdXDP8Qhau">← English Shift</a>
+    <div class="ttl" id="ttl"></div>
+  </header>
+
+  <section id="home" class="home" hidden>
+    <h1>Плеер для shadowing</h1>
+    <p class="muted">Обычно плеер открывается из English Shift: тогда у видео есть текст по фразам. Можно вставить ссылку и сделать петлю вручную.</p>
+    <form id="homeForm"><input id="homeUrl" type="text" inputmode="url" placeholder="Ссылка на YouTube" autocomplete="off"><button class="btn primary">Открыть</button></form>
+    <div id="recentWrap" hidden><h2 class="small muted" style="margin:8px 0 6px;text-transform:uppercase;letter-spacing:.06em">Недавние куски</h2><nav class="recent" id="recent"></nav></div>
+  </section>
+
+  <section id="view" class="layout" hidden>
+    <div class="maincol panel">
+      <div class="modes" role="tablist">
+        <button role="tab" data-mode="input" id="tabInput">1. Смотреть</button>
+        <button role="tab" data-mode="shadow" id="tabShadow">2. Shadowing</button>
+      </div>
+      <div class="dock">
+        <div class="vid"><div id="yt"></div><div class="vidmsg" id="vidmsg">Загружаю YouTube</div></div>
+        <div id="shadowDock" class="panel">
+          <div class="cur">
+            <div class="curmeta"><span id="curIdx" class="mono"></span><span id="curTime" class="mono"></span><span class="sp"></span><span id="rateTag" class="mono"></span></div>
+            <div class="curtext" id="curText"></div>
+            <div class="passes" id="passes" aria-label="Проходы"></div>
+          </div>
+          <div class="ctrl">
+            <button class="btn icon" id="bPrev" aria-label="Предыдущая фраза"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+            <button class="btn primary" id="bPlay"><span id="bPlayIco"></span><span id="bPlayTxt">Играть фразу</span></button>
+            <button class="btn icon" id="bNext" aria-label="Следующая фраза"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
+          </div>
+          <div class="note turn" id="turn" hidden>Твоя очередь, повтори вслух · <span id="turnSec" class="mono"></span></div>
+        </div>
+      </div>
+
+      <div id="inputPanel" class="panel">
+        <div class="prog" aria-hidden="true"><i id="progBar"></i></div>
+        <div class="row small muted"><span id="progTxt" class="mono"></span><span class="sp"></span><button class="chip" id="bText" aria-pressed="false">Показать текст</button></div>
+        <div class="row"><button class="btn primary big" id="bPlayIn">Смотреть кусок</button><button class="btn" id="bRestart">С начала</button></div>
+        <div class="note good" id="inEnd" hidden>Кусок закончился. Вернись в English Shift и сохрани из него фразы, потом переходи к shadowing. <div class="row" style="margin-top:8px"><button class="btn" id="bToShadow">К shadowing</button></div></div>
+        <p class="small muted" style="margin:0">Первый раз смотри без текста и следи за смыслом. Слова не переводи.</p>
+      </div>
+
+      <div id="shadowPanel" class="panel">
+        <div class="row">
+          <div class="group"><span class="lbl">Скорость</span><button class="chip" data-rate="0.5">0.5</button><button class="chip" data-rate="0.75">0.75</button><button class="chip" data-rate="1">1</button></div>
+        </div>
+        <div class="row">
+          <button class="chip" id="bLoop" aria-pressed="true">Петля</button>
+          <button class="chip" id="bEcho" aria-pressed="false">Пауза на повтор</button>
+          <span class="small muted" id="modeHint"></span>
+        </div>
+        <div class="row" id="manualRow" hidden>
+          <button class="btn" id="bSetA">Начало здесь</button><button class="btn" id="bSetB">Конец здесь</button>
+        </div>
+        <div class="row" id="fineRow">
+          <div class="group"><span class="lbl">Фраз</span><button class="mini" id="bLess" aria-label="Убрать фразу">−</button><button class="mini" id="bMore" aria-label="Добавить фразу">+</button></div>
+          <div class="group"><span class="lbl">Начало</span><button class="mini" data-nudge="A" data-d="-0.5">−½</button><button class="mini" data-nudge="A" data-d="0.5">+½</button></div>
+          <div class="group"><span class="lbl">Конец</span><button class="mini" data-nudge="B" data-d="-0.5">−½</button><button class="mini" data-nudge="B" data-d="0.5">+½</button></div>
+        </div>
+        <div class="note warn" id="limit" hidden>Шесть проходов. Дальше пользы мало, бери следующую фразу. <div class="row" style="margin-top:8px"><button class="btn" id="bLimitNext">Следующая фраза</button><button class="btn" id="bLimitMore">Ещё раз</button></div></div>
+        <div class="row">
+          <button class="btn rec" id="bRec"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg><span id="bRecTxt">Записать себя</span></button>
+          <button class="btn" id="bCompare" disabled>Сравнить</button>
+          <button class="btn listen" id="bCheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span id="bCheckTxt">Проверить</span></button>
+        </div>
+        <audio id="recAudio" controls hidden></audio>
+        <div class="diff" id="diff" hidden></div>
+        <p class="small muted" style="margin:0" id="micHint">Записывай в наушниках, иначе в запись попадёт видео. «Проверить» распознаёт сказанное и подсвечивает совпавшие слова.</p>
+        <p class="small muted keys" style="margin:0">Клавиши: <span class="kbd">Пробел</span> играть, <span class="kbd">←</span> <span class="kbd">→</span> фразы, <span class="kbd">R</span> запись, <span class="kbd">C</span> проверить, <span class="kbd">E</span> пауза на повтор, <span class="kbd">1</span> <span class="kbd">2</span> <span class="kbd">3</span> скорость.</p>
+      </div>
+    </div>
+    <div class="listcol" id="listCol"><ol class="list" id="list"></ol></div>
+  </section>
+</div>
+
+<script>
+"use strict";
+const APP_URL = "https://claude.ai/artifact/LrvrWZT5itPVSdXDP8Qhau";
+const $ = s => document.querySelector(s);
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage off */ } }
+};
+const pad = n => String(n).padStart(2, "0");
+function fmt(t) { t = Math.max(0, Math.floor(t || 0)); const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60; return (h ? h + ":" + pad(m) : m) + ":" + pad(s); }
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function b64dec(s) { s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; const bin = atob(s); return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0))); }
+function ytId(s) { s = String(s || "").trim(); const m = s.match(/(?:v=|youtu\.be\/|shorts\/|embed\/|live\/)([A-Za-z0-9_-]{11})/) || s.match(/^([A-Za-z0-9_-]{11})$/); return m ? m[1] : null; }
+function normWords(s) { return String(s).toLowerCase().replace(/[’`]/g, "'").replace(/[^a-z0-9' ]+/g, " ").split(/\s+/).filter(Boolean); }
+function diffHtml(orig, said) {
+  const a = String(orig).split(/\s+/).filter(Boolean), an = a.map(x => normWords(x).join("")), b = normWords(said);
+  const n = an.length, m = b.length; const L = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = an[i] && an[i] === b[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  const hit = new Array(n).fill(false); let i = 0, j = 0;
+  while (i < n && j < m) { if (an[i] && an[i] === b[j]) { hit[i] = true; i++; j++; } else if (L[i + 1][j] >= L[i][j + 1]) i++; else j++; }
+  const pct = n ? Math.round(hit.filter(Boolean).length / n * 100) : 0;
+  return a.map((w, k) => `<span class="${hit[k] ? "ok" : "miss"}">${esc(w)}</span>`).join(" ") + `<span class="pct ${pct >= 80 ? "g" : pct >= 50 ? "w" : "b"}">${pct}%</span><span class="heard">Распознано: ${esc(said)}</span>`;
+}
+
+/* ---------- payload ---------- */
+function parseHash() {
+  const h = location.hash.slice(1); if (!h) return null;
+  const q = new URLSearchParams(h);
+  if (q.get("p")) { try { const o = JSON.parse(b64dec(q.get("p"))); if (o && ytId(o.v)) return normalize(o, h); } catch (e) { /* bad payload */ } }
+  const v = ytId(q.get("v") || ""); if (!v) return null;
+  return normalize({ v, n: q.get("n") || "", m: q.get("m") || "shadow", s: Number(q.get("s")) || 0, e: Number(q.get("e")) || 0, i: 0, x: [] }, h);
+}
+function normalize(o, raw) {
+  const x = Array.isArray(o.x) ? o.x.filter(r => Array.isArray(r) && r.length >= 3 && isFinite(r[0]) && isFinite(r[1])).map(r => [Number(r[0]), Number(r[1]), String(r[2])]) : [];
+  const s = Number(o.s) || (x.length ? x[0][0] : 0), e = Number(o.e) || (x.length ? x[x.length - 1][1] : 0);
+  return { v: ytId(o.v), n: String(o.n || ""), m: o.m === "input" ? "input" : "shadow", s, e, i: Math.max(0, Math.min(x.length - 1, Number(o.i) || 0)), x, raw };
+}
+
+/* ---------- state ---------- */
+const prefs = LS.get("esp.prefs", { loop: true, echo: false, rate: 1 });
+const st = {
+  P: null, mode: "shadow", i: 0, j: 0, A: 0, B: 0, nA: 0, nB: 0,
+  loop: prefs.loop !== false, echo: !!prefs.echo, rate: [0.5, 0.75, 1].includes(prefs.rate) ? prefs.rate : 1,
+  showText: false, waiting: false, waitT: null, compare: false, playing: false, hl: -1, manual: false, passes: {}
+};
+let YTP = null, ready = false, apiReady = false;
+const savePrefs = () => LS.set("esp.prefs", { loop: st.loop, echo: st.echo, rate: st.rate });
+
+function X() { return st.P ? st.P.x : []; }
+function endOf(j) { const x = X(); const nx = x[j + 1]; return nx ? Math.min(x[j][1], nx[0] + 0.35) : x[j][1]; }
+function passKey() { return st.manual ? "m" + Math.round(st.A * 10) : String(X()[st.i][0]) + (st.j > st.i ? "+" + (st.j - st.i) : ""); }
+function getPasses() { return st.passes[passKey()] || 0; }
+function addPass() { const k = passKey(); st.passes[k] = (st.passes[k] || 0) + 1; LS.set("esp.passes." + st.P.v, st.passes); renderPasses(); renderList(); return st.passes[k]; }
+function findIdx(t) { const x = X(); let k = -1; for (let n = 0; n < x.length; n++) { if (x[n][0] <= t + 0.05) k = n; else break; } return k; }
+
+function setSel(i, j) {
+  const x = X(); if (!x.length) return;
+  i = Math.max(0, Math.min(x.length - 1, i)); j = Math.max(i, Math.min(x.length - 1, Math.min(j, i + 4)));
+  st.i = i; st.j = j; st.nA = 0; st.nB = 0; updateAB(); $("#limit").hidden = true; $("#diff").hidden = true;
+  renderList(); scrollToSel();
+}
+function updateAB() {
+  if (!st.manual) { st.A = Math.max(0, X()[st.i][0] + st.nA); st.B = endOf(st.j) + st.nB; }
+  if (st.B < st.A + 0.8) st.B = st.A + 0.8;
+  renderCur();
+}
+function curText() { return st.manual ? "" : X().slice(st.i, st.j + 1).map(r => r[2]).join(" "); }
+
+/* ---------- render ---------- */
+function renderCur() {
+  const x = X();
+  $("#curIdx").textContent = st.manual ? "ручная петля" : "фраза " + (st.i + 1) + (st.j > st.i ? "–" + (st.j + 1) : "") + " из " + x.length;
+  $("#curTime").textContent = fmt(st.A) + "–" + fmt(st.B) + " · " + (st.B - st.A).toFixed(1) + " с";
+  $("#curText").textContent = st.manual ? "Отметь начало и конец кнопками ниже, пока видео играет." : curText();
+  renderPasses();
+}
+function renderPasses() {
+  const n = getPasses();
+  $("#passes").innerHTML = Array.from({ length: 6 }, (_, k) => `<i class="${n > k ? "on" : ""}"></i>`).join("") + `<span>${Math.min(n, 99)} ${n === 1 ? "проход" : n >= 2 && n <= 4 ? "прохода" : "проходов"}</span>`;
+}
+function renderList() {
+  const x = X(); const list = $("#list");
+  const show = x.length && (st.mode === "shadow" || st.showText);
+  $("#listCol").hidden = !show;
+  if (!show) return;
+  list.innerHTML = x.map((r, k) => {
+    const sel = st.mode === "shadow" && k >= st.i && k <= st.j;
+    const n = st.passes[String(r[0])] || 0;
+    return `<li data-k="${k}" class="${sel ? "sel" : ""} ${k === st.hl ? "play" : ""}"><span class="ts">${fmt(r[0])}</span><span class="tx">${esc(r[2])}</span><span class="pc ${n >= 3 ? "done" : ""}">${n ? n + "×" : ""}</span></li>`;
+  }).join("");
+}
+function scrollToSel() {
+  const li = $(`#list li[data-k="${st.i}"]`); if (!li) return;
+  const col = $("#listCol");
+  if (window.matchMedia("(min-width:980px)").matches) { const top = li.offsetTop - col.clientHeight / 3; col.scrollTo({ top, behavior: "smooth" }); }
+}
+function renderMode() {
+  const inp = st.mode === "input";
+  $("#tabInput").setAttribute("aria-selected", inp); $("#tabShadow").setAttribute("aria-selected", !inp);
+  $("#inputPanel").hidden = !inp; $("#shadowPanel").hidden = inp; $("#shadowDock").hidden = inp;
+  $("#manualRow").hidden = !st.manual; $("#fineRow").hidden = st.manual;
+  $("#bLoop").setAttribute("aria-pressed", st.loop); $("#bEcho").setAttribute("aria-pressed", st.echo);
+  document.querySelectorAll("[data-rate]").forEach(b => b.setAttribute("aria-pressed", Number(b.dataset.rate) === st.rate));
+  $("#rateTag").textContent = st.rate !== 1 ? "×" + st.rate : "";
+  $("#modeHint").textContent = st.echo ? "Фраза, потом пауза, чтобы ты повторил" : st.loop ? "Говори одновременно с диктором" : "Видео идёт дальше без петли";
+  $("#bText").setAttribute("aria-pressed", st.showText); $("#bText").textContent = st.showText ? "Скрыть текст" : "Показать текст";
+  renderList(); renderCur(); renderPlay();
+}
+function renderPlay() {
+  $("#bPlayIco").innerHTML = st.playing ? '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>' : '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+  $("#bPlayTxt").textContent = st.playing ? "Пауза" : "Играть фразу";
+  $("#bPlayIn").textContent = st.playing ? "Пауза" : "Смотреть кусок";
+}
+function renderProg(t) {
+  const P = st.P; if (!P.e || P.e <= P.s) { $("#progTxt").textContent = fmt(t); $("#progBar").style.width = "0"; return; }
+  const p = Math.max(0, Math.min(1, (t - P.s) / (P.e - P.s)));
+  $("#progBar").style.width = (p * 100).toFixed(1) + "%"; $("#progTxt").textContent = fmt(Math.max(0, t - P.s)) + " / " + fmt(P.e - P.s);
+}
+
+/* ---------- YouTube ---------- */
+window.onYouTubeIframeAPIReady = function () { apiReady = true; if (st.P) mountPlayer(); };
+function mountPlayer() {
+  if (YTP) { YTP.cueVideoById({ videoId: st.P.v, startSeconds: startTime() }); return; }
+  YTP = new YT.Player("yt", {
+    videoId: st.P.v,
+    playerVars: { playsinline: 1, rel: 0, start: Math.floor(startTime()), cc_load_policy: 0, iv_load_policy: 3, modestbranding: 1 },
+    events: {
+      onReady: () => { ready = true; $("#vidmsg").hidden = true; try { YTP.setPlaybackRate(st.mode === "shadow" ? st.rate : 1); } catch (e) { } },
+      onStateChange: ev => { const p = ev.data === 1; if (p !== st.playing) { st.playing = p; renderPlay(); wake(p); } },
+      onError: ev => { $("#vidmsg").hidden = false; $("#vidmsg").innerHTML = ev.data === 101 || ev.data === 150 ? `Автор запретил показывать это видео на других сайтах.<br><a style="color:#fff" href="https://www.youtube.com/watch?v=${st.P.v}&t=${Math.floor(st.A)}s" target="_blank" rel="noopener">Открыть на YouTube</a>` : "Видео не загрузилось. Проверь ссылку и интернет."; }
+    }
+  });
+}
+function startTime() { return st.mode === "input" ? st.P.s : (st.manual ? st.P.s : X()[st.i][0]); }
+setTimeout(() => { if (st.P && !apiReady) $("#vidmsg").textContent = "YouTube не загрузился. Проверь интернет и обнови страницу."; }, 9000);
+const safe = f => { try { return f(); } catch (e) { return undefined; } };
+
+function playSel() {
+  if (!ready) return; cancelTurn(); st.compare = false; $("#limit").hidden = true;
+  safe(() => YTP.setPlaybackRate(st.rate)); safe(() => YTP.seekTo(st.A, true)); safe(() => YTP.playVideo());
+}
+function togglePlayShadow() {
+  if (!ready) return;
+  if (st.playing || st.waiting) { cancelTurn(); safe(() => YTP.pauseVideo()); return; }
+  const t = safe(() => YTP.getCurrentTime()) || 0;
+  if (t < st.A - 0.3 || t >= st.B - 0.1) playSel(); else { $("#limit").hidden = true; safe(() => YTP.setPlaybackRate(st.rate)); safe(() => YTP.playVideo()); }
+}
+function togglePlayInput() {
+  if (!ready) return;
+  if (st.playing) { safe(() => YTP.pauseVideo()); return; }
+  const P = st.P; const t = safe(() => YTP.getCurrentTime()) || 0;
+  $("#inEnd").hidden = true; safe(() => YTP.setPlaybackRate(1));
+  if (P.e && (t < P.s - 0.5 || t >= P.e - 0.2)) safe(() => YTP.seekTo(P.s, true));
+  safe(() => YTP.playVideo());
+}
+function loopEnd() {
+  const n = addPass();
+  if (n >= 6 && n % 6 === 0) { safe(() => YTP.pauseVideo()); safe(() => YTP.seekTo(st.A, true)); $("#limit").hidden = false; return; }
+  if (st.echo) { safe(() => YTP.pauseVideo()); startTurn((st.B - st.A) / st.rate * 1.15 + 0.8); }
+  else safe(() => YTP.seekTo(st.A, true));
+}
+function startTurn(sec) {
+  st.waiting = true; let left = sec; $("#turn").hidden = false; $("#turnSec").textContent = Math.ceil(left);
+  clearInterval(st.waitT);
+  st.waitT = setInterval(() => {
+    left -= 0.2; $("#turnSec").textContent = Math.max(0, Math.ceil(left));
+    if (left <= 0) { clearInterval(st.waitT); $("#turn").hidden = true; st.waiting = false; safe(() => YTP.seekTo(st.A, true)); safe(() => YTP.playVideo()); }
+  }, 200);
+}
+function cancelTurn() { clearInterval(st.waitT); st.waiting = false; $("#turn").hidden = true; }
+
+setInterval(() => {
+  if (!ready || !st.P) return;
+  const t = safe(() => YTP.getCurrentTime()); if (typeof t !== "number") return;
+  const k = findIdx(t);
+  if (k !== st.hl) { const old = $(`#list li.play`); if (old) old.classList.remove("play"); st.hl = k; const li = $(`#list li[data-k="${k}"]`); if (li) li.classList.add("play"); }
+  if (st.mode === "input") {
+    renderProg(t);
+    if (st.playing && st.P.e && t >= st.P.e - 0.05) { safe(() => YTP.pauseVideo()); $("#inEnd").hidden = false; }
+    return;
+  }
+  if (st.compare) { if (st.playing && t >= st.B) { safe(() => YTP.pauseVideo()); st.compare = false; const a = $("#recAudio"); if (a.src) { a.currentTime = 0; a.play().catch(() => { }); } } return; }
+  if (!st.playing || st.waiting) return;
+  if (st.loop) {
+    if (t > st.B + 1.2 || t < st.A - 1.2) { if (!st.manual && k >= 0) { setSel(k, k); } }
+    else if (t >= st.B) loopEnd();
+  } else if (!st.manual && k >= 0 && (k < st.i || k > st.j)) { st.i = k; st.j = k; st.nA = 0; st.nB = 0; updateAB(); renderList(); scrollToSel(); }
+}, 60);
+
+let wl = null;
+async function wake(on) { try { if (on && !wl && navigator.wakeLock) { wl = await navigator.wakeLock.request("screen"); wl.addEventListener("release", () => { wl = null; }); } else if (!on && wl) { await wl.release(); wl = null; } } catch (e) { wl = null; } }
+
+/* ---------- recording & speech ---------- */
+let rec = null, recStream = null, recUrl = null;
+async function toggleRec() {
+  if (rec && rec.state === "recording") { rec.stop(); return; }
+  if (!navigator.mediaDevices || !window.MediaRecorder) { toastMic("Запись голоса в этом браузере недоступна."); return; }
+  try {
+    recStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    const chunks = []; rec = new MediaRecorder(recStream);
+    rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    rec.onstop = () => {
+      recStream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
+      if (recUrl) URL.revokeObjectURL(recUrl); recUrl = URL.createObjectURL(blob);
+      const a = $("#recAudio"); a.src = recUrl; a.hidden = false; $("#bCompare").disabled = false;
+      $("#bRec").classList.remove("on"); $("#bRecTxt").textContent = "Записать заново";
+    };
+    rec.start(); $("#bRec").classList.add("on"); $("#bRecTxt").textContent = "Стоп";
+    if (!st.playing && !st.waiting && ready) playSel();
+  } catch (e) { toastMic("Нет доступа к микрофону. Разреши его в настройках браузера."); }
+}
+function compare() {
+  if (!recUrl || !ready) return; cancelTurn(); $("#recAudio").pause();
+  st.compare = true; safe(() => YTP.setPlaybackRate(st.rate)); safe(() => YTP.seekTo(st.A, true)); safe(() => YTP.playVideo());
+}
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let srObj = null, srText = "";
+function toggleCheck() {
+  if (!SR) { toastMic("Распознавание речи работает в Chrome и Safari. В этом браузере его нет."); return; }
+  if (srObj) { srObj.stop(); return; }
+  if (st.playing) safe(() => YTP.pauseVideo()); cancelTurn();
+  srText = ""; srObj = new SR(); srObj.lang = "en-US"; srObj.interimResults = true; srObj.continuous = false; srObj.maxAlternatives = 1;
+  $("#bCheck").classList.add("on"); $("#bCheckTxt").textContent = "Говори…"; $("#diff").hidden = false; $("#diff").innerHTML = '<span class="muted">Слушаю. Скажи фразу целиком.</span>';
+  srObj.onresult = ev => { let fin = "", tmp = ""; for (const r of ev.results) { if (r.isFinal) fin += r[0].transcript + " "; else tmp += r[0].transcript; } srText = (fin + tmp).trim(); if (srText) $("#diff").innerHTML = '<span class="muted">' + esc(srText) + "</span>"; };
+  srObj.onerror = ev => { if (ev.error === "not-allowed" || ev.error === "service-not-allowed") toastMic("Нет доступа к микрофону. Разреши его в настройках браузера."); };
+  srObj.onend = () => {
+    srObj = null; $("#bCheck").classList.remove("on"); $("#bCheckTxt").textContent = "Проверить";
+    $("#diff").innerHTML = srText ? diffHtml(st.manual ? srText : curText(), srText) : '<span class="muted">Ничего не распознал. Попробуй ещё раз ближе к микрофону.</span>';
+  };
+  try { srObj.start(); } catch (e) { srObj = null; $("#bCheck").classList.remove("on"); $("#bCheckTxt").textContent = "Проверить"; }
+}
+function toastMic(msg) { $("#micHint").textContent = msg; $("#micHint").style.color = "var(--bad)"; }
+
+/* ---------- events ---------- */
+function setMode(m) {
+  st.mode = m; cancelTurn(); st.compare = false; $("#inEnd").hidden = true;
+  if (ready) { safe(() => YTP.pauseVideo()); safe(() => YTP.setPlaybackRate(m === "shadow" ? st.rate : 1)); safe(() => YTP.seekTo(m === "input" ? st.P.s : st.A, true)); }
+  renderMode(); if (m === "shadow") scrollToSel();
+}
+$("#tabInput").onclick = () => setMode("input");
+$("#tabShadow").onclick = () => setMode("shadow");
+$("#bToShadow").onclick = () => setMode("shadow");
+$("#bPlay").onclick = togglePlayShadow;
+$("#bPlayIn").onclick = togglePlayInput;
+$("#bRestart").onclick = () => { if (!ready) return; $("#inEnd").hidden = true; safe(() => YTP.seekTo(st.P.s, true)); safe(() => YTP.playVideo()); };
+$("#bText").onclick = () => { st.showText = !st.showText; renderMode(); };
+$("#bPrev").onclick = () => { if (st.manual) return; setSel(st.i - 1, st.i - 1); playSel(); };
+$("#bNext").onclick = () => { if (st.manual) return; setSel(st.j + 1, st.j + 1); playSel(); };
+$("#bLimitNext").onclick = () => { setSel(st.j + 1, st.j + 1); playSel(); };
+$("#bLimitMore").onclick = () => playSel();
+$("#bLess").onclick = () => { if (st.j > st.i) { st.j--; st.nB = 0; updateAB(); renderList(); } };
+$("#bMore").onclick = () => { if (st.j < X().length - 1 && st.j - st.i < 4) { st.j++; st.nB = 0; updateAB(); renderList(); } };
+document.querySelectorAll("[data-nudge]").forEach(b => b.onclick = () => { const d = Number(b.dataset.d); if (b.dataset.nudge === "A") st.nA += d; else st.nB += d; updateAB(); });
+document.querySelectorAll("[data-rate]").forEach(b => b.onclick = () => { st.rate = Number(b.dataset.rate); savePrefs(); safe(() => YTP.setPlaybackRate(st.rate)); renderMode(); });
+$("#bLoop").onclick = () => { st.loop = !st.loop; if (!st.loop) { st.echo = false; cancelTurn(); } savePrefs(); renderMode(); };
+$("#bEcho").onclick = () => { st.echo = !st.echo; if (st.echo) st.loop = true; else cancelTurn(); savePrefs(); renderMode(); };
+$("#bSetA").onclick = () => { if (!ready) return; st.A = safe(() => YTP.getCurrentTime()) || 0; if (st.B <= st.A + 0.8) st.B = st.A + 5; renderCur(); };
+$("#bSetB").onclick = () => { if (!ready) return; const t = safe(() => YTP.getCurrentTime()) || 0; if (t > st.A + 0.8) { st.B = t; renderCur(); playSel(); } };
+$("#bRec").onclick = toggleRec;
+$("#bCompare").onclick = compare;
+$("#bCheck").onclick = toggleCheck;
+$("#list").addEventListener("click", e => {
+  const li = e.target.closest("li[data-k]"); if (!li) return; const k = Number(li.dataset.k);
+  if (st.mode === "shadow") { setSel(k, k); playSel(); }
+  else if (ready) { $("#inEnd").hidden = true; safe(() => YTP.seekTo(X()[k][0], true)); safe(() => YTP.playVideo()); }
+});
+document.addEventListener("keydown", e => {
+  if (e.target.closest("input,textarea") || e.metaKey || e.ctrlKey || e.altKey || !st.P) return;
+  const k = e.key.toLowerCase();
+  if (k === " ") { e.preventDefault(); st.mode === "input" ? togglePlayInput() : togglePlayShadow(); }
+  else if (st.mode !== "shadow") return;
+  else if (k === "arrowleft") { e.preventDefault(); $("#bPrev").click(); }
+  else if (k === "arrowright") { e.preventDefault(); $("#bNext").click(); }
+  else if (k === "r" || k === "к") toggleRec();
+  else if (k === "c" || k === "с") toggleCheck();
+  else if (k === "e" || k === "у") $("#bEcho").click();
+  else if (k === "l" || k === "д") $("#bLoop").click();
+  else if (k === "1" || k === "2" || k === "3") { const r = [0.5, 0.75, 1][Number(k) - 1]; document.querySelector(`[data-rate="${r}"]`).click(); }
+});
+$("#homeForm").addEventListener("submit", e => { e.preventDefault(); const v = ytId($("#homeUrl").value); if (!v) { $("#homeUrl").setCustomValidity("Не нашёл ссылку на YouTube"); $("#homeUrl").reportValidity(); return; } location.hash = "v=" + v + "&m=shadow"; });
+$("#homeUrl").addEventListener("input", () => $("#homeUrl").setCustomValidity(""));
+
+/* ---------- boot ---------- */
+function remember(P) {
+  if (!P.x.length) return;
+  const list = LS.get("esp.recent", []).filter(r => !(r.v === P.v && Math.abs(r.s - P.s) < 1));
+  list.unshift({ h: P.raw, v: P.v, n: P.n, s: P.s, e: P.e, at: Date.now() });
+  LS.set("esp.recent", list.slice(0, 12));
+}
+function renderHome() {
+  const list = LS.get("esp.recent", []);
+  $("#recentWrap").hidden = !list.length;
+  $("#recent").innerHTML = list.map(r => `<a href="#${esc(r.h)}"><b>${esc(r.n || "Видео " + r.v)}</b><span class="small muted mono">${fmt(r.s)}–${fmt(r.e)} · ${new Date(r.at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</span></a>`).join("");
+}
+function boot() {
+  const P = parseHash();
+  cancelTurn(); st.compare = false;
+  if (!P) { st.P = null; $("#view").hidden = true; $("#home").hidden = false; $("#ttl").textContent = ""; document.title = "English Shift Player"; renderHome(); if (ready) safe(() => YTP.pauseVideo()); return; }
+  const same = st.P && st.P.v === P.v;
+  st.P = P; st.manual = !P.x.length; st.mode = P.m; st.passes = LS.get("esp.passes." + P.v, {}); st.showText = false; st.hl = -1;
+  if (st.manual) { st.A = P.s; st.B = P.e > P.s ? P.e : P.s + 6; } else { st.i = P.i; st.j = P.i; st.nA = st.nB = 0; st.A = X()[st.i][0]; st.B = endOf(st.j); }
+  $("#home").hidden = true; $("#view").hidden = false; $("#ttl").textContent = P.n; document.title = (P.n ? P.n + " · " : "") + "Shadowing";
+  remember(P); renderMode(); renderProg(P.s);
+  if (apiReady) { if (same && ready) safe(() => YTP.seekTo(startTime(), true)); else mountPlayer(); }
+}
+window.addEventListener("hashchange", boot);
+boot();
+</script>
+<script src="https://www.youtube.com/iframe_api" async></script>
+</body>
+</html>
